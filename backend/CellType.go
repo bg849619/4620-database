@@ -60,6 +60,9 @@ func GetCellType(t string) (CellType, error) {
 	return CellType{}, errors.New("not_found")
 }
 
+/*
+Saves changes to an existing CellType
+*/
 func (c CellType) Save(oldType string) (err error) {
 	query := `UPDATE CellTypes SET Type = ? WHERE Type = ?;`
 	_, err = db.Exec(query, c.Type, oldType)
@@ -79,8 +82,8 @@ func handleCreateCellTypes(w http.ResponseWriter, r *http.Request) {
 	result := make([]CellType, 0)
 	err := json.NewDecoder(r.Body).Decode(&result)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, "Could not decode cell types.")
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "Body must be an array of Cell Types.")
 		return
 	}
 
