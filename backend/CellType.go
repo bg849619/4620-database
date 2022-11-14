@@ -66,6 +66,12 @@ func (c CellType) Save(oldType string) (err error) {
 	return
 }
 
+func (c CellType) Delete() (err error) {
+	query := `DELETE FROM CellTypes WHERE Type = ?`
+	_, err = db.Exec(query, c.Type)
+	return
+}
+
 /** HTTP Routes **/
 
 func handleCreateCellTypes(w http.ResponseWriter, r *http.Request) {
@@ -162,9 +168,29 @@ func handleEditCellType(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleDeleteCellType(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	cell, err := GetCellType(v["type"])
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "Could not find Cell Type.")
+		return
+	}
+
+	err = cell.Delete()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not delete Cell Type.")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func init() {
 	registerRoute(Route{"/celltypes", handleGetGeneric(GetCellTypes), "GET"})
 	registerRoute(Route{"/celltypes", handleCreateCellTypes, "POST"})
 	registerRoute(Route{"/celltypes/{type}", handleGetCellType, "GET"})
 	registerRoute(Route{"/celltypes/{type}", handleEditCellType, "PUT"})
+	registerRoute(Route{"/celltypes/{type}", handleDeleteCellType, "DELETE"})
 }
