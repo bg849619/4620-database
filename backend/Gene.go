@@ -256,5 +256,6 @@ func init() {
 	registerRoute(Route{"/genes/{name}", handleEditGene, "PUT"})
 	registerRoute(Route{"/genes/{name}", handleDeleteGene, "DELETE"})
 	registerRoute(Route{"/genes/{name}/loci", handleGetGeneLoci, "GET"})
+	registerRoute(Route{"/genes/{name}/loci", handleCreateGeneLociRelation, "POST"})
 	registerRoute(Route{"/genes/{name}/loci", handleDeleteGeneLociRelation, "DELETE"})
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -190,10 +191,194 @@ func handleDeleteCellType(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func handleGetMotifInstancesInCellType(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	cell, err := GetCellType(v["type"])
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "Could not find Cell Type.")
+		return
+	}
+
+	instances, err := cell.GetMotifInstances()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not fetch Motif Instances.")
+		return
+	}
+
+	json.NewEncoder(w).Encode(instances)
+}
+
+func handleGetInteractionsInCellType(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	cell, err := GetCellType(v["type"])
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "Could not find Cell Type.")
+		return
+	}
+
+	interactions, err := cell.GetInteractions()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not fetch Interactions")
+		return
+	}
+
+	json.NewEncoder(w).Encode(interactions)
+}
+
+func handleCreateInteraction(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	cell, err := GetCellType(v["type"])
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "Could not find Cell Type.")
+		return
+	}
+
+	// No need for JSON, just use the cell type and create an interaction.
+	// Function will return the new ID.
+	it := Interaction{CellType: cell.Type}
+	newid, err := it.Create()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not create Interaction.\n", err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	it.ID = newid
+	json.NewEncoder(w).Encode(it)
+}
+
+func handleDeleteCellTypeMotif(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	cell, err := GetCellType(v["type"])
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "Could not find Cell Type.")
+		return
+	}
+
+	start, err := strconv.ParseInt(v["start"], 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "Start field is invalid. Must be an integer.")
+		return
+	}
+
+	inst, err := GetMotifInstance(cell.Type, v["chr"], int(start))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not fetch Motif Instances.")
+		return
+	}
+
+	err = inst.Delete()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not delete Motif Instance.")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func handleGetGeneExpressions(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	cell, err := GetCellType(v["type"])
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "Could not find Cell Type.")
+		return
+	}
+
+	expresesions, err := cell.GeneExpressions()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not fetch Gene Expressions.")
+		return
+	}
+
+	json.NewEncoder(w).Encode(expresesions)
+}
+
+func handleEditGeneExpression(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	cell, err := GetCellType(v["type"])
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "Could not find Cell Type.")
+		return
+	}
+
+	_, err = cell.GeneExpression(v["name"])
+	if err != nil {
+		if err.Error() == "not_found" {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "Could not find Gene Expression.")
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "Could not fetch Gene Expressions.")
+		}
+		return
+	}
+
+	var newExpression GeneExpression
+	err = json.NewDecoder(r.Body).Decode(&newExpression)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "Request body should be a Gene Expression")
+		return
+	}
+
+	newExpression.Save()
+}
+
+func handleDeleteGeneExpression(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	cell, err := GetCellType(v["type"])
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "Could not find Cell Type.")
+		return
+	}
+
+	expression, err := cell.GeneExpression(v["name"])
+	if err != nil {
+		if err.Error() == "not_found" {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "Could not find Gene Expression.")
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "Could not fetch Gene Expressions.")
+		}
+		return
+	}
+
+	err = expression.Delete()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not delete Gene Expression.")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func init() {
 	registerRoute(Route{"/celltypes", handleGetGeneric(GetCellTypes), "GET"})
 	registerRoute(Route{"/celltypes", handleCreateCellTypes, "POST"})
 	registerRoute(Route{"/celltypes/{type}", handleGetCellType, "GET"})
 	registerRoute(Route{"/celltypes/{type}", handleEditCellType, "PUT"})
 	registerRoute(Route{"/celltypes/{type}", handleDeleteCellType, "DELETE"})
+	registerRoute(Route{"/celltypes/{type}/motifs", handleGetMotifInstancesInCellType, "GET"})
+	registerRoute(Route{"/celltypes/{type}/motifs/{chr}/{start}", handleDeleteCellTypeMotif, "DELETE"})
+	registerRoute(Route{"/celltypes/{type}/interactions", handleGetInteractionsInCellType, "GET"})
+	registerRoute(Route{"/celltypes/{type}/interactions", handleCreateInteraction, "POST"})
+	registerRoute(Route{"/celltypes/{type}/genes", handleGetGeneExpressions, "GET"})
+	registerRoute(Route{"/celltypes/{type}/genes/{name}", handleEditGeneExpression, "PUT"})
+	registerRoute(Route{"/celltypes/{tpye}/genes/{name}", handleDeleteGeneExpression, "DELETE"})
 }

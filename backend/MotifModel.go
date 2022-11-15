@@ -32,13 +32,13 @@ func (mm MotifModel) Delete() (err error) {
 	return
 }
 
-func (mm MotifModel) Create() (err error) {
+func (mm MotifModel) CreateMotifModel() (err error) {
 	query := "INSERT INTO MotifModels VALUES (?, ?, ?, ?, ?, ?, ?)"
 	_, err = db.Exec(query, mm.Name, mm.Length, mm.Quality, mm.UniprotID, mm.TranscriptionFactor, mm.TFFamily, mm.EntrezGene)
 	return
 }
 
-func Create(mms []MotifModel) (err error) {
+func CreateMotifModel(mms []MotifModel) (err error) {
 	// We could just call Create() on each, but that's not efficient.
 	values := make([]string, len(mms))
 	args := make([]interface{}, (len(mms) * 7))
@@ -182,7 +182,7 @@ func handleCreateMotifModels(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = Create(models)
+	err = CreateMotifModel(models)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprint(w, "Could not create Motif Models.\n", err.Error())
