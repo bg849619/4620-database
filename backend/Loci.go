@@ -1,3 +1,4 @@
+// TODO: Implement automatic relationships of Genes and Loci upon creation or edit of Loci.
 package main
 
 import (
@@ -141,6 +142,7 @@ func handleCreateLoci(w http.ResponseWriter, r *http.Request) {
 		args[point+1] = result[i].Chr
 		args[point+2] = result[i].Start
 		args[point+3] = result[i].End
+		point += 4
 	}
 
 	query := fmt.Sprintf("INSERT INTO Loci VALUES %s", strings.Join(values, ", "))
@@ -156,9 +158,34 @@ func handleCreateLoci(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Created new Loci.")
 }
 
+func handleGetLocusGenes(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	locus, err := GetLocus(v["id"])
+	if err != nil {
+		if err.Error() == "not_found" {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "Could not find Locus.")
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "Could not fetch Loci.")
+		}
+		return
+	}
+
+	genes, err := locus.GetGenes()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not fetch Genes of Locus.")
+		return
+	}
+
+	json.NewEncoder(w).Encode(genes)
+}
+
 func init() {
 	registerRoute(Route{"/loci", handleGetLoci, "GET"})
 	registerRoute(Route{"/loci/{id}", handleGetLocus, "GET"})
 	registerRoute(Route{"/loci/{id}", handleDeleteLocus, "DELETE"})
 	registerRoute(Route{"/loci", handleCreateLoci, "POST"})
+	registerRoute(Route{"/loci/{id}/genes", handleGetLocusGenes, "GET"})
 }

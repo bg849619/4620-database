@@ -25,3 +25,24 @@ func (g Gene) GetLoci() (result []Locus, err error) {
 
 	return
 }
+
+func (l Locus) GetGenes() (result []Gene, err error) {
+	query := `SELECT G.* FROM Genes AS G INNER JOIN GeneInLocus AS GIL ON G.Name=GIL.Gene WHERE GIL.Locus=?`
+	rows, err := db.Queryx(query, l.ID)
+	if err != nil {
+		return []Gene{}, err
+	}
+	defer rows.Close()
+
+	result = make([]Gene, 0)
+	for rows.Next() {
+		var g Gene
+		err = rows.StructScan(&g)
+		if err != nil {
+			return result, err
+		}
+		result = append(result, g)
+	}
+
+	return
+}

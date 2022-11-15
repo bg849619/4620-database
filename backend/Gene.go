@@ -1,3 +1,4 @@
+// TODO: Implement automatic relationship between Genes and Loci on creation/edit of Genes.
 package main
 
 import (
@@ -172,10 +173,88 @@ func handleDeleteGene(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleGetGeneLoci(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	gene, err := GetGene(v["name"])
+	if err != nil {
+		if err.Error() == "not_found" {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "Could not find Gene.")
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "Could not fetch Genes.")
+		}
+		return
+	}
+
+	loci, err := gene.GetLoci()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not fetch Loci of Gene.")
+		return
+	}
+
+	json.NewEncoder(w).Encode(loci)
+}
+
+// Temporary functions to manually create the relations.
+func handleCreateGeneLociRelation(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	// SQL will automatically fail if the Gene and Locus are dupes, or don't exist.
+	var locusID string
+
+	err := json.NewDecoder(r.Body).Decode(&locusID)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "Request body should be a string referring to the ID of a Locus")
+		return
+	}
+
+	query := `INSERT INTO GeneInLocus VALUES (?, ?)`
+	_, err = db.Exec(query, locusID, v["name"])
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "Invalid request. Either the Locus or Gene does not exist, or this relationship already exists.")
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	fmt.Fprint(w, "Created relationship.")
+}
+
+func handleDeleteGeneLociRelation(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	var locusID string
+
+	err := json.NewDecoder(r.Body).Decode(&locusID)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "Request body should be a string referring to the ID of a Locus.")
+		return
+	}
+
+	query := `DELETE FROM GeneInLocus WHERE Locus=? AND Gene=?`
+	_, err = db.Exec(query, locusID, v["name"])
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Could not delete relationship.")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "Deleted relationship.")
+}
+
 func init() {
 	registerRoute(Route{"/genes", handleGetGeneric(GetGenes), "GET"})
 	registerRoute(Route{"/genes", handleCreateGenes, "POST"})
 	registerRoute(Route{"/genes/{name}", handleGetGene, "GET"})
 	registerRoute(Route{"/genes/{name}", handleEditGene, "PUT"})
 	registerRoute(Route{"/genes/{name}", handleDeleteGene, "DELETE"})
+	registerRoute(Route{"/genes/{name}/loci", handleGetGeneLoci, "GET"})
+	registerRoute(Route{"/genes/{name}/loci", handleDeleteGeneLociRelation, "DELETE"})
 }
