@@ -35,15 +35,24 @@ func main() {
 
 	db = sqlx.MustConnect("sqlite3", dbPath)
 
-	r := mux.NewRouter()
+	_, loaderSet := os.LookupEnv("RUN_DB_LOADER")
+	if loaderSet {
+		RunDataLoader()
+	} else {
+		mainRouter := mux.NewRouter()
+		r := mainRouter.PathPrefix("/api").Subrouter()
 
-	for _, rt := range routes {
-		r.HandleFunc(rt.path, rt.handler).Methods(rt.method)
+		for _, rt := range routes {
+			r.HandleFunc(rt.path, rt.handler).Methods(rt.method)
+		}
+
+		mainRouter.Use(mux.CORSMethodMiddleware(r))
+
+		http.ListenAndServe(":8080", mainRouter)
 	}
-
-	http.ListenAndServe(":8080", r)
 }
 
+// Uses a generic GetAll function for the structs, to create a generic Route Handler.
 func handleGetGeneric[T any](getFunc func() ([]T, error)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		stuff, err := getFunc()

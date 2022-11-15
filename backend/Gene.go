@@ -18,6 +18,12 @@ type Gene struct {
 	End   int    `json:"End" db:"End"`
 }
 
+func (g Gene) Create() (err error) {
+	query := `INSERT INTO Genes VALUES (?, ?, ?, ?)`
+	_, err = db.Exec(query, g.Name, g.Chr, g.Start, g.End)
+	return
+}
+
 func (g Gene) Save(oldName string) (err error) {
 	query := `UPDATE Genes SET Name = ?, Chr = ?, Start = ?, End = ? WHERE Name = ?`
 	_, err = db.Exec(query, g.Name, g.Chr, g.Start, g.End, oldName)

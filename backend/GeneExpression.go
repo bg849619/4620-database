@@ -61,9 +61,15 @@ func (g Gene) GeneExpressions() ([]GeneExpression, error) {
 	return expressions, nil
 }
 
+func (g GeneExpression) Create() (err error) {
+	query := `INSERT INTO GeneExpression VALUES (?, ?, ?)`
+	_, err = db.Exec(query, g.CellType, g.Gene, g.ExpressionLevel)
+	return
+}
+
 func (g GeneExpression) Save() (err error) {
-	query := `UPDATE GeneExpression WHERE CellType=? AND Gene=?`
-	_, err = db.Exec(query, g.CellType, g.Gene)
+	query := `UPDATE GeneExpression SET ExpressionLevel=? WHERE CellType=? AND Gene=?`
+	_, err = db.Exec(query, g.ExpressionLevel, g.CellType, g.Gene)
 	return
 }
 

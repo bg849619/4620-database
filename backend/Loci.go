@@ -24,6 +24,12 @@ func (l Locus) Save(oldId string) (err error) {
 	return
 }
 
+func (l Locus) Create() (err error) {
+	query := `INSERT INTO Loci VALUES (?, ?, ?, ?)`
+	_, err = db.Exec(query, l.ID, l.Chr, l.Start, l.End)
+	return
+}
+
 func (l Locus) Delete() (err error) {
 	query := `DELETE FROM Loci WHERE ID=?`
 	_, err = db.Exec(query, l.ID)

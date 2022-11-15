@@ -23,6 +23,12 @@ func (m MotifInstance) GetModel() (model MotifModel, err error) {
 	return
 }
 
+func (m MotifInstance) Create() (err error) {
+	query := `INSERT INTO MotifInstances VALUES (?, ?, ?, ?, ?, ?, ?)`
+	_, err = db.Exec(query, m.CellType, m.Chr, m.Start, m.Forward, m.ThresholdScore, m.LocusID, m.Model)
+	return
+}
+
 func (m MotifModel) GetInstances() (instances []MotifInstance, err error) {
 	query := "SELECT * FROM MotifInstance WHERE Model=?"
 	rows, err := db.Queryx(query, m.Name)
